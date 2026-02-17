@@ -8,6 +8,7 @@
 
 extern char **environ;
 
+/* PATH-də komanda axtarır */
 char *find_command(char *command)
 {
     char *path_env, *path_copy, *dir, *full_path;
