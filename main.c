@@ -1,98 +1,59 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <string.h>
-
-extern char **environ;
+#include "simpleshell.h"
 
 /**
- * trim_spaces - Removes leading and trailing spaces
- * @str: input string
- *
- * Return: pointer to trimmed string
- */
-char *trim_spaces(char *str)
-{
-	char *end;
-
-	while (*str == ' ' || *str == '\t')
-		str++;
-
-	if (*str == '\0')
-		return (str);
-
-	end = str + strlen(str) - 1;
-
-	while (end > str && (*end == ' ' || *end == '\t'))
-		end--;
-
-	*(end + 1) = '\0';
-
-	return (str);
-}
-
-/**
- * main - Simple UNIX shell
- * Return: Always 0
+ * main - simple shell loop
+ * Return: 0 on success
  */
 int main(void)
 {
 	char *line = NULL;
-	char *cmd;
 	size_t len = 0;
-	ssize_t nread;
+	ssize_t read;
 	pid_t pid;
 	int status;
+	char *args[64];
+	char *token;
+	int i;
 
 	while (1)
 	{
 		if (isatty(STDIN_FILENO))
+			printf("$ ");
+
+		read = getline(&line, &len, stdin);
+		if (read == -1)
+			break;
+
+		if (line[read - 1] == '\n')
+			line[read - 1] = '\0';
+
+		i = 0;
+		token = strtok(line, " ");
+		while (token != NULL && i < 63)
 		{
-			printf("#cisfun$ ");
-			fflush(stdout);
+			args[i++] = token;
+			token = strtok(NULL, " ");
 		}
+		args[i] = NULL;
 
-		nread = getline(&line, &len, stdin);
-
-		if (nread == -1)
-		{
-			free(line);
-			exit(0);
-		}
-
-		if (line[nread - 1] == '\n')
-			line[nread - 1] = '\0';
-
-		cmd = trim_spaces(line);
-
-		if (*cmd == '\0')
+		if (args[0] == NULL)
 			continue;
 
 		pid = fork();
-
 		if (pid == 0)
 		{
-			char *argv[2];
-
-			argv[0] = cmd;
-			argv[1] = NULL;
-
-			if (execve(cmd, argv, environ) == -1)
+			if (execvp(args[0], args) == -1)
 			{
 				perror("./hsh");
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
-		}
-		else if (pid > 0)
-		{
-			wait(&status);
 		}
 		else
 		{
-			perror("fork");
+			wait(&status);
 		}
 	}
 
+	free(line);
 	return (0);
 }
