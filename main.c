@@ -2,8 +2,35 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <string.h>
 
 extern char **environ;
+
+/**
+ * trim_spaces - Removes leading and trailing spaces
+ * @str: input string
+ *
+ * Return: pointer to trimmed string
+ */
+char *trim_spaces(char *str)
+{
+	char *end;
+
+	while (*str == ' ' || *str == '\t')
+		str++;
+
+	if (*str == '\0')
+		return (str);
+
+	end = str + strlen(str) - 1;
+
+	while (end > str && (*end == ' ' || *end == '\t'))
+		end--;
+
+	*(end + 1) = '\0';
+
+	return (str);
+}
 
 /**
  * main - Simple UNIX shell
@@ -12,6 +39,7 @@ extern char **environ;
 int main(void)
 {
 	char *line = NULL;
+	char *cmd;
 	size_t len = 0;
 	ssize_t nread;
 	pid_t pid;
@@ -36,7 +64,9 @@ int main(void)
 		if (line[nread - 1] == '\n')
 			line[nread - 1] = '\0';
 
-		if (line[0] == '\0')
+		cmd = trim_spaces(line);
+
+		if (*cmd == '\0')
 			continue;
 
 		pid = fork();
@@ -45,10 +75,10 @@ int main(void)
 		{
 			char *argv[2];
 
-			argv[0] = line;
+			argv[0] = cmd;
 			argv[1] = NULL;
 
-			if (execve(line, argv, environ) == -1)
+			if (execve(cmd, argv, environ) == -1)
 			{
 				perror("./hsh");
 				exit(1);
@@ -66,4 +96,3 @@ int main(void)
 
 	return (0);
 }
-
