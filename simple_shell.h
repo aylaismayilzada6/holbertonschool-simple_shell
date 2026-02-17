@@ -1,19 +1,13 @@
-#ifndef SIMPLE_SHELL
-#define SIMPLE_SHELL
+#ifndef SIMPLE_SHELL_H
+#define SIMPLE_SHELL_H
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <sys/types.h>
 #include <sys/wait.h>
+#include <string.h>
 
-int execute(char *const command[], char **envp);
-int print_env(void);
-char *_getenv(const char *name, char **envp);
-void parse(char command[], char **envp);
+#define MAX_LINE 1024
 
-#endif /* SIMPLE_SHELL */
+#endif
+
