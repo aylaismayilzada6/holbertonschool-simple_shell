@@ -1,178 +1,109 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <string.h>
 
 #define MAX_ARGS 64
 
 extern char **environ;
 
-/**
- * get_path - get PATH variable from environ
- * Return: PATH string or NULL
- */
-char *get_path(void)
+char *find_command(char *command)
 {
-	int i = 0;
+    char *path_env, *path_copy, *dir, *full_path;
+    int len;
 
-	while (environ[i])
-	{
-		if (strncmp(environ[i], "PATH=", 5) == 0)
-			return (environ[i] + 5);
-		i++;
-	}
-	return (NULL);
+    if (command[0] == '/')
+    {
+        if (access(command, X_OK) == 0)
+            return strdup(command);
+        return NULL;
+    }
+
+    path_env = getenv("PATH");
+    if (!path_env)
+        return NULL;
+
+    path_copy = strdup(path_env);
+    dir = strtok(path_copy, ":");
+
+    while (dir)
+    {
+        len = strlen(dir) + strlen(command) + 2;
+        full_path = malloc(len);
+        if (!full_path)
+            return NULL;
+
+        snprintf(full_path, len, "%s/%s", dir, command);
+
+        if (access(full_path, X_OK) == 0)
+        {
+            free(path_copy);
+            return full_path;
+        }
+
+        free(full_path);
+        dir = strtok(NULL, ":");
+    }
+
+    free(path_copy);
+    return NULL;
 }
 
-/**
- * find_path - find full path of command
- * @cmd: command
- * Return: full path or NULL
- */
-char *find_path(char *cmd)
+int main(void)
 {
-	char *path_env, *path_copy, *dir;
-	static char full_path[1024];
+    char *line = NULL;
+    size_t len = 0;
+    char *args[MAX_ARGS];
+    char *token, *cmd_path;
+    pid_t pid;
+    int status, i;
 
-	if (strchr(cmd, '/'))
-	{
-		if (access(cmd, X_OK) == 0)
-			return (cmd);
-		return (NULL);
-	}
+    while (1)
+    {
+        printf(":) ");
+        fflush(stdout);
 
-	path_env = get_path();
-	if (!path_env || *path_env == '\0')
-		return (NULL);
+        if (getline(&line, &len, stdin) == -1)
+            break;
 
-	path_copy = strdup(path_env);
-	if (!path_copy)
-		return (NULL);
+        line[strcspn(line, "\n")] = 0;
 
-	dir = strtok(path_copy, ":");
-	while (dir)
-	{
-		snprintf(full_path, sizeof(full_path), "%s/%s", dir, cmd);
-		if (access(full_path, X_OK) == 0)
-		{
-			free(path_copy);
-			return (full_path);
-		}
-		dir = strtok(NULL, ":");
-	}
+        if (strlen(line) == 0)
+            continue;
 
-	free(path_copy);
-	return (NULL);
-}
+        i = 0;
+        token = strtok(line, " ");
+        while (token && i < MAX_ARGS - 1)
+        {
+            args[i++] = token;
+            token = strtok(NULL, " ");
+        }
+        args[i] = NULL;
 
-/**
- * print_env - prints environment variables
- */
-void print_env(void)
-{
-	int i = 0;
+        cmd_path = find_command(args[0]);
 
-	while (environ[i])
-	{
-		write(STDOUT_FILENO, environ[i], strlen(environ[i]));
-		write(STDOUT_FILENO, "\n", 1);
-		i++;
-	}
-}
+        if (!cmd_path)
+        {
+            printf("./shell: %s: command not found\n", args[0]);
+            continue;
+        }
 
-/**
- * main - simple shell with exit and env built-ins
- * @argc: argument count
- * @argv: argument vector
- * Return: exit status
- */
-int main(int argc, char **argv)
-{
-	char *line = NULL;
-	size_t len = 0;
-	ssize_t read;
-	pid_t pid;
-	int status = 0;
-	int line_count = 0;
-	char *args[MAX_ARGS];
-	char *token;
-	char *cmd_path;
-	int i;
+        pid = fork();
+        if (pid == 0)
+        {
+            execve(cmd_path, args, environ);
+            perror("execve");
+            exit(1);
+        }
+        else
+        {
+            wait(&status);
+        }
 
-	(void)argc;
+        free(cmd_path);
+    }
 
-	while (1)
-	{
-		if (isatty(STDIN_FILENO))
-			write(STDOUT_FILENO, "$ ", 2);
-
-		read = getline(&line, &len, stdin);
-		if (read == -1)
-		{
-			free(line);
-			exit(status);
-		}
-
-		line_count++;
-		line[strcspn(line, "\n")] = '\0';
-
-		i = 0;
-		token = strtok(line, " ");
-		while (token && i < MAX_ARGS - 1)
-		{
-			args[i++] = token;
-			token = strtok(NULL, " ");
-		}
-		args[i] = NULL;
-
-		if (args[0] == NULL)
-			continue;
-
-		/* EXIT BUILTIN */
-		if (strcmp(args[0], "exit") == 0)
-		{
-			free(line);
-			exit(status);
-		}
-
-		/* ENV BUILTIN */
-		if (strcmp(args[0], "env") == 0)
-		{
-			print_env();
-			continue;
-		}
-
-		cmd_path = find_path(args[0]);
-
-		if (cmd_path == NULL)
-		{
-			fprintf(stderr, "%s: %d: %s: not found\n",
-				argv[0], line_count, args[0]);
-			status = 127;
-
-			if (!isatty(STDIN_FILENO))
-			{
-				free(line);
-				exit(127);
-			}
-			continue;
-		}
-
-		pid = fork();
-		if (pid == 0)
-		{
-			execve(cmd_path, args, environ);
-			perror(argv[0]);
-			exit(127);
-		}
-		else
-		{
-			wait(&status);
-			status = WEXITSTATUS(status);
-		}
-	}
-
-	free(line);
-	return (status);
+    free(line);
+    return 0;
 }
