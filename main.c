@@ -19,8 +19,11 @@ int main(void)
 
 	while (1)
 	{
-		printf("#cisfun$ ");
-		fflush(stdout);
+		if (isatty(STDIN_FILENO))
+		{
+			printf("#cisfun$ ");
+			fflush(stdout);
+		}
 
 		nread = getline(&line, &len, stdin);
 
@@ -32,6 +35,9 @@ int main(void)
 
 		if (line[nread - 1] == '\n')
 			line[nread - 1] = '\0';
+
+		if (line[0] == '\0')
+			continue;
 
 		pid = fork();
 
