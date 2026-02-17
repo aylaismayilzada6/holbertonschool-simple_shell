@@ -3,21 +3,27 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+extern char **environ;
+
 /**
- * main - Simple UNIX shell
+ * main - Simple UNIX command line interpreter
  *
- * Description: Displays a prompt, reads commands,
- * executes them using execve.
+ * Description: Displays a prompt, reads a command,
+ * forks a child process and executes it using execve.
+ * Handles EOF (Ctrl+D) and errors.
  *
  * Return: Always 0
  */
 int main(void)
 {
-	char *line = NULL;
-	size_t len = 0;
+	char *line;
+	size_t len;
 	ssize_t nread;
 	pid_t pid;
 	int status;
+
+	line = NULL;
+	len = 0;
 
 	while (1)
 	{
@@ -39,11 +45,14 @@ int main(void)
 
 		if (pid == 0)
 		{
-			char *argv[] = {line, NULL};
+			char *argv[2];
 
-			if (execve(line, argv, NULL) == -1)
+			argv[0] = line;
+			argv[1] = NULL;
+
+			if (execve(line, argv, environ) == -1)
 			{
-				perror("./shell");
+				perror("./hsh");
 				exit(1);
 			}
 		}
@@ -59,4 +68,5 @@ int main(void)
 
 	return (0);
 }
+
 
