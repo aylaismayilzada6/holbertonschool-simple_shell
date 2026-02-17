@@ -7,12 +7,39 @@
 extern char **environ;
 
 /**
+ * trim_spaces - Removes leading and trailing spaces
+ * @str: input string
+ *
+ * Return: pointer to trimmed string
+ */
+char *trim_spaces(char *str)
+{
+	char *end;
+
+	while (*str == ' ' || *str == '\t')
+		str++;
+
+	if (*str == '\0')
+		return (str);
+
+	end = str + strlen(str) - 1;
+
+	while (end > str && (*end == ' ' || *end == '\t'))
+		end--;
+
+	*(end + 1) = '\0';
+
+	return (str);
+}
+
+/**
  * main - Simple UNIX shell
  * Return: Always 0
  */
 int main(void)
 {
 	char *line = NULL;
+	char *cmd;
 	size_t len = 0;
 	ssize_t nread;
 	pid_t pid;
@@ -28,46 +55,37 @@ int main(void)
 
 		nread = getline(&line, &len, stdin);
 
-		/* Handle EOF (Ctrl+D) */
 		if (nread == -1)
 		{
 			free(line);
 			exit(0);
 		}
 
-		/* Array to hold the command and its arguments */
-		char *argv[100];
-		int i = 0;
-		
-		/* Tokenize the input string by spaces, tabs, and newlines */
-		char *token = strtok(line, " \t\n");
-		
-		while (token != NULL && i < 99)
-		{
-			argv[i++] = token;
-			token = strtok(NULL, " \t\n");
-		}
-		argv[i] = NULL; /* execve requires the array to be NULL-terminated */
+		if (line[nread - 1] == '\n')
+			line[nread - 1] = '\0';
 
-		/* If no command was entered (e.g., user just hit Enter), prompt again */
-		if (argv[0] == NULL)
+		cmd = trim_spaces(line);
+
+		if (*cmd == '\0')
 			continue;
 
 		pid = fork();
 
 		if (pid == 0)
 		{
-			/* Child process */
-			if (execve(argv[0], argv, environ) == -1)
+			char *argv[2];
+
+			argv[0] = cmd;
+			argv[1] = NULL;
+
+			if (execve(cmd, argv, environ) == -1)
 			{
 				perror("./hsh");
-				free(line); /* Fixes the Valgrind memory leak before exiting */
 				exit(1);
 			}
 		}
 		else if (pid > 0)
 		{
-			/* Parent process */
 			wait(&status);
 		}
 		else
