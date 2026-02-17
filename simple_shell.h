@@ -11,6 +11,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+extern char **environ;
+
+char *trim(char *str);
 int execute(char *const command[], char **envp);
 int print_env(void);
 char *_getenv(const char *name, char **envp);
