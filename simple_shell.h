@@ -1,11 +1,10 @@
-#ifndef SIMPLE_SHELL
-#define SIMPLE_SHELL
+#ifndef SIMPLE_SHELL_H
+#define SIMPLE_SHELL_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -13,10 +12,7 @@
 
 extern char **environ;
 
-char *trim(char *str);
-int execute(char *const command[], char **envp);
-int print_env(void);
-char *_getenv(const char *name, char **envp);
-void parse(char command[], char **envp);
+char *find_command(char *command);
+int handle_builtin(char **args);
 
-#endif /* SIMPLE_SHELL */
+#endif /* SIMPLE_SHELL_H */
