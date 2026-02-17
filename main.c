@@ -8,7 +8,6 @@
 
 extern char **environ;
 
-/* PATH-də komanda axtarır */
 char *find_command(char *command)
 {
     char *path_env, *path_copy, *dir, *full_path;
@@ -51,6 +50,16 @@ char *find_command(char *command)
     return NULL;
 }
 
+void builtin_env(void)
+{
+    int i = 0;
+    while (environ[i])
+    {
+        printf("%s\n", environ[i]);
+        i++;
+    }
+}
+
 int main(void)
 {
     char *line = NULL;
@@ -81,6 +90,18 @@ int main(void)
             token = strtok(NULL, " ");
         }
         args[i] = NULL;
+
+        if (strcmp(args[0], "exit") == 0)
+        {
+            free(line);
+            return 0;
+        }
+
+        if (strcmp(args[0], "env") == 0)
+        {
+            builtin_env();
+            continue;
+        }
 
         cmd_path = find_command(args[0]);
 
